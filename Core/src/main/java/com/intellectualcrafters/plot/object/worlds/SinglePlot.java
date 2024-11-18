@@ -4,16 +4,17 @@ import com.google.common.collect.Sets;
 import com.intellectualcrafters.plot.config.C;
 import com.intellectualcrafters.plot.flag.Flag;
 import com.intellectualcrafters.plot.object.*;
+import lombok.NonNull;
+import org.jetbrains.annotations.NotNull;
 
-import javax.annotation.Nonnull;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.UUID;
 
 public class SinglePlot extends Plot {
     private HashSet<RegionWrapper> regions = Sets.newHashSet(
-        new RegionWrapper(Integer.MIN_VALUE, Integer.MAX_VALUE, Integer.MIN_VALUE,
-            Integer.MAX_VALUE));
+            new RegionWrapper(Integer.MIN_VALUE, Integer.MAX_VALUE, Integer.MIN_VALUE,
+                    Integer.MAX_VALUE));
 
     public SinglePlot(PlotArea area, PlotId id, UUID owner) {
         super(area, id, owner);
@@ -28,30 +29,36 @@ public class SinglePlot extends Plot {
     }
 
     public SinglePlot(PlotId id, UUID owner, HashSet<UUID> trusted, HashSet<UUID> members,
-        HashSet<UUID> denied, String alias, BlockLoc position, Collection<Flag> flags,
-        PlotArea area, boolean[] merged, long timestamp, int temp) {
+                      HashSet<UUID> denied, String alias, BlockLoc position, Collection<Flag> flags,
+                      PlotArea area, boolean[] merged, long timestamp, int temp) {
         super(id, owner, trusted, members, denied, alias, position, flags, area, merged, timestamp,
-            temp);
+                temp);
     }
 
-    @Override public String getWorldName() {
+    @Override
+    public String getWorldName() {
         return getId().toCommaSeparatedString();
     }
 
-    @Override public SinglePlotArea getArea() {
+    @Override
+    public SinglePlotArea getArea() {
         return (SinglePlotArea) super.getArea();
     }
 
-    @Override protected boolean isLoaded() {
+    @Override
+    protected boolean isLoaded() {
         getArea().loadWorld(getId());
         return super.isLoaded();
     }
 
-    @Override public Location getSide() {
+    @Override
+    public Location getSide() {
         return getCenter();
     }
 
-    @Nonnull @Override public HashSet<RegionWrapper> getRegions() {
+    @NonNull
+    @Override
+    public @NotNull HashSet<RegionWrapper> getRegions() {
         return regions;
     }
 

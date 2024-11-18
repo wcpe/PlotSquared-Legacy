@@ -1554,9 +1554,7 @@ public class PS{
         try (InputStream stream = getClass().getResourceAsStream("/plugin.properties")) {
             try (BufferedReader br = new BufferedReader(new InputStreamReader(stream))) {
                 String versionString = br.readLine();
-                String commitString = br.readLine();
-                String dateString = br.readLine();
-                this.version = PlotVersion.tryParse(versionString, commitString, dateString);
+                this.version = PlotVersion.tryParse(versionString);
                 System.out.println("PlotSquared version is " + this.version);
             }
         } catch (Throwable ignore) {

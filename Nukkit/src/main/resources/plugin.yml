@@ -1,9 +1,9 @@
-name: "${name}"
+name: "PlotSquared"
 version: "${version}"
 author: Empire92
-api: ["1.0.0"]
+api: [ "1.0.0" ]
 main: com.plotsquared.nukkit.NukkitMain
-depend: [FastAsyncWorldEdit, DbLib]
+depend: [ FastAsyncWorldEdit, SqliteLib ]
 load: STARTUP
 permissions:
   plots.use:
@@ -60,7 +60,7 @@ permissions:
   plots.permpack.basicinbox:
     default: op
     children:
-      comments.notifications.enabled  : true
+      comments.notifications.enabled: true
       plots.inbox.read.public: true
       plots.inbox.modify.public: true
       plots.inbox.write.public: true

@@ -18,7 +18,7 @@ import com.intellectualcrafters.plot.util.UUIDHandlerImplementation;
 import com.intellectualcrafters.plot.util.WorldUtil;
 import com.intellectualcrafters.plot.util.block.QueueProvider;
 
-import javax.annotation.Nonnull;
+import lombok.NonNull;
 import java.io.File;
 import java.util.List;
 
@@ -88,7 +88,7 @@ public interface IPlotMain extends ILogger {
     /**
      * Get the server implementation string
      */
-    @Nonnull
+    @NonNull
     String getServerImplementation();
 
     /**

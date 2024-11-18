@@ -36,7 +36,7 @@ import com.plotsquared.nukkit.uuid.FileUUIDHandler;
 import com.plotsquared.nukkit.uuid.LowerOfflineUUIDWrapper;
 import com.sk89q.worldedit.WorldEdit;
 
-import javax.annotation.Nonnull;
+import lombok.NonNull;
 import java.io.File;
 import java.lang.reflect.Field;
 import java.util.*;
@@ -68,7 +68,7 @@ public final class NukkitMain extends PluginBase implements Listener, IPlotMain 
 
 
     @Override
-    @Nonnull
+    @NonNull
     public String getServerImplementation() {
         return this.getServer().getVersion();
     }
