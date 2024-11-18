@@ -4,11 +4,7 @@ import cn.nukkit.Player;
 import cn.nukkit.Server;
 import cn.nukkit.block.Block;
 import cn.nukkit.command.CommandSender;
-import cn.nukkit.entity.Entity;
-import cn.nukkit.entity.EntityCreature;
-import cn.nukkit.entity.EntityHanging;
-import cn.nukkit.entity.EntityHuman;
-import cn.nukkit.entity.EntityLiving;
+import cn.nukkit.entity.*;
 import cn.nukkit.entity.item.EntityPotion;
 import cn.nukkit.entity.item.EntityVehicle;
 import cn.nukkit.entity.mob.EntityMob;
@@ -16,11 +12,7 @@ import cn.nukkit.entity.passive.EntityAnimal;
 import cn.nukkit.entity.passive.EntityTameable;
 import cn.nukkit.entity.passive.EntityWaterAnimal;
 import cn.nukkit.entity.projectile.EntityProjectile;
-import cn.nukkit.event.Cancellable;
-import cn.nukkit.event.Event;
-import cn.nukkit.event.EventHandler;
-import cn.nukkit.event.EventPriority;
-import cn.nukkit.event.Listener;
+import cn.nukkit.event.*;
 import cn.nukkit.event.block.*;
 import cn.nukkit.event.entity.*;
 import cn.nukkit.event.inventory.InventoryCloseEvent;
@@ -40,14 +32,10 @@ import com.intellectualcrafters.plot.util.*;
 import com.plotsquared.listener.PlotListener;
 import com.plotsquared.nukkit.object.NukkitPlayer;
 import com.plotsquared.nukkit.util.NukkitUtil;
+import lombok.val;
 
-import java.util.HashSet;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.Map.Entry;
-import java.util.Set;
-import java.util.UUID;
 import java.util.regex.Pattern;
 
 public class PlayerEvents extends PlotListener implements Listener {
@@ -117,7 +105,7 @@ public class PlayerEvents extends PlotListener implements Listener {
     public void onEntityCombustByEntity(EntityCombustEvent event) {
         if (event instanceof EntityCombustByEntityEvent) {
             EntityDamageByEntityEvent eventChange =
-        new EntityDamageByEntityEvent(((EntityCombustByEntityEvent) event).getCombuster(), event.getEntity(), EntityDamageEvent.DamageCause.FIRE_TICK, event.getDuration());
+                    new EntityDamageByEntityEvent(((EntityCombustByEntityEvent) event).getCombuster(), event.getEntity(), EntityDamageEvent.DamageCause.FIRE_TICK, event.getDuration());
             onEntityDamageByEntityEvent(eventChange);
         }
     }
@@ -271,18 +259,18 @@ public class PlayerEvents extends PlotListener implements Listener {
         EventUtil.manager.doRespawnTask(pp);
     }
 
-    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
-    public void onTeleport(PlayerTeleportEvent event) {
-        if (event.getTo() == null || event.getFrom() == null) {
-            NukkitUtil.getPlayer(event.getPlayer()).deleteMeta("location");
-            NukkitUtil.getPlayer(event.getPlayer()).deleteMeta("lastplot");
-            return;
-        }
-        cn.nukkit.level.Location from = event.getFrom();
-        cn.nukkit.level.Location to = event.getTo();
+
+    /**
+     * 检查玩家是否在 plot 内
+     *
+     * @param player 玩家
+     * @param from   出发位置
+     * @param to     目的地
+     * @return 是否取消事件
+     */
+    private boolean checkPlayerPosition(Player player, cn.nukkit.level.Location from, cn.nukkit.level.Location to) {
         int x2;
         if (MathMan.roundInt(from.getX()) != (x2 = MathMan.roundInt(to.getX()))) {
-            Player player = event.getPlayer();
             PlotPlayer pp = NukkitUtil.getPlayer(player);
             // Cancel teleport
             TaskManager.TELEPORT_QUEUE.remove(pp.getName());
@@ -292,7 +280,7 @@ public class PlayerEvents extends PlotListener implements Listener {
             PlotArea area = loc.getPlotArea();
             if (area == null) {
                 pp.deleteMeta("lastplot");
-                return;
+                return false;
             }
             Plot now = area.getPlot(loc);
             Plot lastPlot = pp.getMeta("lastplot");
@@ -306,41 +294,39 @@ public class PlayerEvents extends PlotListener implements Listener {
                         player.teleport(player.getLevel().getSpawnLocation());
                     }
                     this.tmpTeleport = true;
-                    event.setCancelled(true);
-                    return;
+                    return true;
                 }
             } else if (now.equals(lastPlot)) {
-                return;
+                return false;
             } else if (!plotEntry(pp, now) && this.tmpTeleport) {
                 MainUtil.sendMessage(pp, C.NO_PERMISSION_EVENT, C.PERMISSION_ADMIN_ENTRY_DENIED);
                 this.tmpTeleport = false;
                 to.setComponents(from.getX(), from.getY(), from.getZ());
-                player.teleport(event.getTo());
+                player.teleport(to);
                 this.tmpTeleport = true;
-                return;
+                return false;
             }
             Integer border = area.getBorder();
             if (x2 > border) {
                 to.setComponents(border - 4, to.getY(), to.getZ());
                 this.tmpTeleport = false;
-                player.teleport(event.getTo());
+                player.teleport(to);
                 this.tmpTeleport = true;
                 MainUtil.sendMessage(pp, C.BORDER);
-                return;
+                return false;
             }
             if (x2 < -border) {
                 to.setComponents(-border + 4, to.getY(), to.getZ());
                 this.tmpTeleport = false;
-                player.teleport(event.getTo());
+                player.teleport(to);
                 this.tmpTeleport = true;
                 MainUtil.sendMessage(pp, C.BORDER);
-                return;
+                return false;
             }
-            return;
+            return false;
         }
         int z2;
         if (MathMan.roundInt(from.getZ()) != (z2 = MathMan.roundInt(to.getZ()))) {
-            Player player = event.getPlayer();
             PlotPlayer pp = NukkitUtil.getPlayer(player);
             // Cancel teleport
             TaskManager.TELEPORT_QUEUE.remove(pp.getName());
@@ -350,7 +336,7 @@ public class PlayerEvents extends PlotListener implements Listener {
             PlotArea area = loc.getPlotArea();
             if (area == null) {
                 pp.deleteMeta("lastplot");
-                return;
+                return false;
             }
             Plot now = area.getPlot(loc);
             Plot lastPlot = pp.getMeta("lastplot");
@@ -364,154 +350,56 @@ public class PlayerEvents extends PlotListener implements Listener {
                         player.teleport(player.getLevel().getSpawnLocation());
                     }
                     this.tmpTeleport = true;
-                    event.setCancelled(true);
-                    return;
+                    return true;
                 }
             } else if (now.equals(lastPlot)) {
-                return;
+                return false;
             } else if (!plotEntry(pp, now) && this.tmpTeleport) {
                 MainUtil.sendMessage(pp, C.NO_PERMISSION_EVENT, C.PERMISSION_ADMIN_ENTRY_DENIED);
                 this.tmpTeleport = false;
                 player.teleport(from);
                 to.setComponents(from.getX(), from.getY(), from.getZ());
-                player.teleport(event.getTo());
+                player.teleport(to);
                 this.tmpTeleport = true;
-                return;
+                return false;
             }
             Integer border = area.getBorder();
             if (z2 > border) {
                 to.setComponents(to.getX(), to.getY(), border - 4);
                 this.tmpTeleport = false;
-                player.teleport(event.getTo());
+                player.teleport(to);
                 this.tmpTeleport = true;
                 MainUtil.sendMessage(pp, C.BORDER);
             } else if (z2 < -border) {
                 to.setComponents(to.getX(), to.getY(), -border + 4);
                 this.tmpTeleport = false;
-                player.teleport(event.getTo());
+                player.teleport(to);
                 this.tmpTeleport = true;
                 MainUtil.sendMessage(pp, C.BORDER);
             }
         }
+        return false;
+    }
+
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
+    public void onTeleport(PlayerTeleportEvent event) {
+        val to = event.getTo();
+        val from = event.getFrom();
+        if (to == null || to.level == null || from == null || from.level == null) {
+            NukkitUtil.getPlayer(event.getPlayer()).deleteMeta("location");
+            NukkitUtil.getPlayer(event.getPlayer()).deleteMeta("lastplot");
+            return;
+        }
+        val result = checkPlayerPosition(event.getPlayer(), from, to);
+        event.setCancelled(result);
     }
 
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void playerMove(PlayerMoveEvent event) {
         cn.nukkit.level.Location from = event.getFrom();
         cn.nukkit.level.Location to = event.getTo();
-        int x2;
-        if (MathMan.roundInt(from.getX()) != (x2 = MathMan.roundInt(to.getX()))) {
-            Player player = event.getPlayer();
-            PlotPlayer pp = NukkitUtil.getPlayer(player);
-            // Cancel teleport
-            TaskManager.TELEPORT_QUEUE.remove(pp.getName());
-            // Set last location
-            Location loc = NukkitUtil.getLocation(to);
-            pp.setMeta("location", loc);
-            PlotArea area = loc.getPlotArea();
-            if (area == null) {
-                pp.deleteMeta("lastplot");
-                return;
-            }
-            Plot now = area.getPlot(loc);
-            Plot lastPlot = pp.getMeta("lastplot");
-            if (now == null) {
-                if (lastPlot != null && !plotExit(pp, lastPlot) && this.tmpTeleport) {
-                    MainUtil.sendMessage(pp, C.NO_PERMISSION_EVENT, C.PERMISSION_ADMIN_EXIT_DENIED);
-                    this.tmpTeleport = false;
-                    if (lastPlot.equals(NukkitUtil.getLocation(from).getPlot())) {
-                        player.teleport(from);
-                    } else {
-                        player.teleport(player.getLevel().getSpawnLocation());
-                    }
-                    this.tmpTeleport = true;
-                    event.setCancelled(true);
-                    return;
-                }
-            } else if (now.equals(lastPlot)) {
-                return;
-            } else if (!plotEntry(pp, now) && this.tmpTeleport) {
-                MainUtil.sendMessage(pp, C.NO_PERMISSION_EVENT, C.PERMISSION_ADMIN_ENTRY_DENIED);
-                this.tmpTeleport = false;
-                to.setComponents(from.getX(), from.getY(), from.getZ());
-                player.teleport(event.getTo());
-                this.tmpTeleport = true;
-                return;
-            }
-            Integer border = area.getBorder();
-            if (x2 > border) {
-                to.setComponents(border - 4, to.getY(), to.getZ());
-                this.tmpTeleport = false;
-                player.teleport(event.getTo());
-                this.tmpTeleport = true;
-                MainUtil.sendMessage(pp, C.BORDER);
-                return;
-            }
-            if (x2 < -border) {
-                to.setComponents(-border + 4, to.getY(), to.getZ());
-                this.tmpTeleport = false;
-                player.teleport(event.getTo());
-                this.tmpTeleport = true;
-                MainUtil.sendMessage(pp, C.BORDER);
-                return;
-            }
-            return;
-        }
-        int z2;
-        if (MathMan.roundInt(from.getZ()) != (z2 = MathMan.roundInt(to.getZ()))) {
-            Player player = event.getPlayer();
-            PlotPlayer pp = NukkitUtil.getPlayer(player);
-            // Cancel teleport
-            TaskManager.TELEPORT_QUEUE.remove(pp.getName());
-            // Set last location
-            Location loc = NukkitUtil.getLocation(to);
-            pp.setMeta("location", loc);
-            PlotArea area = loc.getPlotArea();
-            if (area == null) {
-                pp.deleteMeta("lastplot");
-                return;
-            }
-            Plot now = area.getPlot(loc);
-            Plot lastPlot = pp.getMeta("lastplot");
-            if (now == null) {
-                if (lastPlot != null && !plotExit(pp, lastPlot) && this.tmpTeleport) {
-                    MainUtil.sendMessage(pp, C.NO_PERMISSION_EVENT, C.PERMISSION_ADMIN_EXIT_DENIED);
-                    this.tmpTeleport = false;
-                    if (lastPlot.equals(NukkitUtil.getLocation(from).getPlot())) {
-                        player.teleport(from);
-                    } else {
-                        player.teleport(player.getLevel().getSpawnLocation());
-                    }
-                    this.tmpTeleport = true;
-                    event.setCancelled(true);
-                    return;
-                }
-            } else if (now.equals(lastPlot)) {
-                return;
-            } else if (!plotEntry(pp, now) && this.tmpTeleport) {
-                MainUtil.sendMessage(pp, C.NO_PERMISSION_EVENT, C.PERMISSION_ADMIN_ENTRY_DENIED);
-                this.tmpTeleport = false;
-                player.teleport(from);
-                to.setComponents(from.getX(), from.getY(), from.getZ());
-                player.teleport(event.getTo());
-                this.tmpTeleport = true;
-                return;
-            }
-            Integer border = area.getBorder();
-            if (z2 > border) {
-                to.setComponents(to.getX(), to.getY(), border - 4);
-                this.tmpTeleport = false;
-                player.teleport(event.getTo());
-                this.tmpTeleport = true;
-                MainUtil.sendMessage(pp, C.BORDER);
-            } else if (z2 < -border) {
-                to.setComponents(to.getX(), to.getY(), -border + 4);
-                this.tmpTeleport = false;
-                player.teleport(event.getTo());
-                this.tmpTeleport = true;
-                MainUtil.sendMessage(pp, C.BORDER);
-            }
-        }
+         val result = checkPlayerPosition(event.getPlayer(), from, to);
+        event.setCancelled(result);
     }
 
     @EventHandler(priority = EventPriority.LOW)
@@ -628,10 +516,12 @@ public class PlayerEvents extends PlotListener implements Listener {
         if (!entity.hasMetadata("plot")) {
             entity.setMetadata("plot", new MetadataValue((Plugin) PS.get().IMP) {
                 private Plot plot = finalPlot;
+
                 @Override
                 public Object value() {
                     return plot;
                 }
+
                 @Override
                 public void invalidate() {
                     plot = null;
@@ -850,10 +740,12 @@ public class PlayerEvents extends PlotListener implements Listener {
         } else {
             entity.setMetadata("plot", new MetadataValue((Plugin) PS.get().IMP) {
                 private Plot plot = finalPlot;
+
                 @Override
                 public Object value() {
                     return plot;
                 }
+
                 @Override
                 public void invalidate() {
                     plot = null;
@@ -950,7 +842,7 @@ public class PlayerEvents extends PlotListener implements Listener {
                     return checkEntity(plot, Flags.ENTITY_CAP, Flags.MOB_CAP, Flags.ANIMAL_CAP);
                 } else if (entity instanceof EntityMob) {
                     return checkEntity(plot, Flags.ENTITY_CAP, Flags.MOB_CAP, Flags.HOSTILE_CAP);
-                } else if (entity instanceof EntityHuman){
+                } else if (entity instanceof EntityHuman) {
                     return false;
                 } else {
                     return checkEntity(plot, Flags.ENTITY_CAP, Flags.MOB_CAP, Flags.MOB_CAP);
@@ -960,7 +852,7 @@ public class PlayerEvents extends PlotListener implements Listener {
             }
         } else if (entity instanceof EntityVehicle) {
             return checkEntity(plot, Flags.ENTITY_CAP, Flags.VEHICLE_CAP);
-        } else if (entity instanceof EntityHanging){
+        } else if (entity instanceof EntityHanging) {
             return checkEntity(plot, Flags.ENTITY_CAP, Flags.MISC_CAP);
         } else {
             return checkEntity(plot, Flags.ENTITY_CAP);
